@@ -4,7 +4,8 @@ const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose  = require("mongoose");
 const encrypt = require("mongoose-encryption")
-const md5  = require("md5");
+const bcrypt  = require("bcrypt");
+const saltRounds = 10;
 
 mongoose.connect("mongodb://localhost:27017/userDB",{ useNewUrlParser: true, useUnifiedTopology: true });
 
@@ -34,15 +35,19 @@ app.route("/login")
     if(err){
       console.log(err);
     }else{
-          if(foundUser.password === md5(req.body.password)){
+      bcrypt.compare(req.body.password, foundUser.password, function(err, result) {
+        if(err){
+          console.log(err);
+        }else{
+          if(result){
             console.log("Welcome user");
             res.render("secrets");
-          }
-          else{
+          }else{
             console.log("Your password or email was incorrect!")
             res.redirect("/login");
           }
-
+      }
+      });
     }
   });
 });
@@ -56,19 +61,19 @@ app.route("/register")
 })
 
 .post(function(req,res){
-  const newUser =new User({
-    email: req.body.username,
-    password: md5(req.body.password)
-  });
-
-  newUser.save(function(err){
-    if(err){
-      console.log(err);
-    }else{
-      res.render('secrets');
-    }
-  });
-
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    const newUser =new User({
+      email: req.body.username,
+      password: hash
+    });
+    newUser.save(function(err){
+        if(err){
+          console.log(err);
+        }else{
+          res.render('secrets');
+        }
+      });
+    });
 });
 
 
